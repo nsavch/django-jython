@@ -2,31 +2,28 @@
 
 import os
 
-from optparse import make_option
-
 from django.db import connection
-from django.core.management.base import NoArgsCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError
 from django.template import Context, Template
 
 from doj.management.commands import DOJConfigurationMixin
 
 
-class Command(NoArgsCommand, DOJConfigurationMixin):
-    option_list = NoArgsCommand.option_list + (
-        make_option('--project-name', dest='project_name', default='',
+class Command(BaseCommand, DOJConfigurationMixin):
+    def add_arguments(self, parser):
+        parser.add_argument('--project-name', dest='project_name', default='',
                     help=u"Name of the application used in description texts. If "
                          u"unspecified, the project name is generated from the "
                          u"application directory."),
-        make_option('--context-root', dest='context_root', default='',
+        parser.add_argument('--context-root', dest='context_root', default='',
                     help=u"Name of the context root for the application. If "
                          u"unspecified, the project name is used. The context "
                          u"root name is used as the name of the configuration "
                          u"file."),
-        make_option('--base-dir', dest='base_dir', default='',
+        parser.add_argument('--base-dir', dest='base_dir', default='',
                     help=u"The base directory of your project. If unspecified, "
                          u"the BASE_DIR configuration in your settings will be "
-                         u"used."),
-    )
+                         u"used.")
     help = u"Prints the JNDI datasource configuration for the default database"
     requires_system_checks = True
 
@@ -80,7 +77,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
             return False
         return True
 
-    def handle_noargs(self, **options):
+    def handle(self, **options):
         self._setup(None, options)
 
         self.do_print_configuration()

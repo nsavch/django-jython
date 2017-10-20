@@ -9,7 +9,7 @@ setup(
     name='django-jython',
     version='1.8.0b4',
     install_requires=[
-        'Django>=1.8.0,<1.9.0',
+        'Django>=1.8.0,<1.10.0',
     ],
     packages=[
         'doj',
@@ -36,6 +36,7 @@ setup(
             'war_skel/WEB-INF/lib-python/application_settings.py.tmpl',
             'war_skel/WEB-INF/lib-python/eggs.pth.tmpl',
             'war_skel/WEB-INF/lib-python/README',
+            'jndi_skel/jndidatasource.xml.tmpl'
         ],
     },
     zip_safe=False,

@@ -4,55 +4,46 @@ import os
 import tempfile
 import zipfile
 
-from optparse import make_option
-
 from django.conf import settings
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 from django.template import Context, Template
 
 from doj.management.commands import DOJConfigurationMixin
 
 
-class Command(NoArgsCommand, DOJConfigurationMixin):
-    option_list = NoArgsCommand.option_list + (
-        make_option('--include-java-libs', dest='include_java_libs', default='',
-                    help=u"List of java libraries (in the form of JAR files), "
+class Command(BaseCommand, DOJConfigurationMixin):
+    def add_arguments(self, parser):
+        parser.add_argument('--include-java-libs', dest='include_java_libs', default='',
+                         help=u"List of java libraries (in the form of JAR files), "
                          u"which must be included, separated by the \"%s\" "
                          u"character. Typically used for JDBC drivers " %
                          (os.path.pathsep, )),
-        make_option('--include-py-packages', dest='include_py_packages',
+        parser.add_argument('--include-py-packages', dest='include_py_packages',
                     default='',
                     help=u"List of python top-level packages (directories) to "
                          u"include separated by the \"%s\" character" %
                          (os.path.pathsep, )),
-        make_option('--include-additional-dirs', dest='include_add_dirs',
+        parser.add_argument('--include-additional-dirs', dest='include_add_dirs',
                     default='',
                     help=u"List of Directories to put in WEB-INF Folder "
                          u"separated by the \"%s\" character" %
                          (os.path.pathsep, )),
-        make_option('--project-name', dest='project_name', default='',
+        parser.add_argument('--project-name', dest='project_name', default='',
                     help=u"Name of the application used in description texts. If "
                          u"unspecified, the project name is generated from the "
                          u"application directory."),
-        make_option('--project-description', dest='project_description', default='',
+        parser.add_argument('--project-description', dest='project_description', default='',
                     help=u"Description of the application used web.xml"),
-        make_option('--context-root', dest='context_root', default='',
+        parser.add_argument('--context-root', dest='context_root', default='',
                     help=u"Name of the context root for the application. If "
                          u"unspecified, the project name is used. The context "
                          u"root name is used as the name of the .war file, and "
                          u"as a prefix for some url-related settings, such as "
                          u"MEDIA_URL"),
-        make_option('--base-dir', dest='base_dir', default='',
+        parser.add_argument('--base-dir', dest='base_dir', default='',
                     help=u"The base directory of your project. If unspecified, "
                          u"the BASE_DIR configuration in your settings will be "
                          u"used."),
-        make_option('--war-dir', dest='war_dir', default='',
-                    help=u"The directory where the resulting WAR file will be "
-                         u"written to.  If not set, use DOJ_BUILDWAR_DIRECTORY "
-                         u"in the configuration if it's available.  As a last "
-                         u"resort, it will fallback to BASE_DIR if the "
-                         u"previous two entries are not set."),
-    )
     help = u"Builds a WAR file for stand-alone deployment on a Java Servlet container"
     requires_system_checks = True
 
@@ -64,7 +55,6 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
 
         self.__tmp_dir = None
         self.__base_dir = None
-        self.__war_dir = None
 
     def _get_skel_dir(self):
         return os.path.join(os.path.dirname(__file__), 'war_skel')
@@ -128,10 +118,10 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
 
         return True
 
-    def handle_noargs(self, **options):
+    def handle(self, **options):
         self._setup(None, options)
 
-        self.stdout.write(self.style.MIGRATE_LABEL(u"Assembling WAR"))
+        self.stdout.write(u"Assembling WAR")
         self.stdout.flush()
 
         self.do_copy_skel()
@@ -144,21 +134,16 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
         self.do_process_templates()
         self.do_build_war()
 
-        self.stdout.write(self.style.MIGRATE_LABEL(u"Finished"))
+        self.stdout.write(u"Finished")
         self.stdout.flush()
 
     def do_build_war(self):
         self.stdout.write(u"  Build %s.war..." % self._get_context_root(), ending='')
         self.stdout.flush()
 
-        try:
-            os.makedirs(self._get_war_dir())
-        except OSError:
-            if not os.path.isdir(self._get_war_dir()):
-                raise
-
         temp_path = self._get_temp_dir()
-        war_path = os.path.abspath(os.path.join(self._get_war_dir(), "%s.war" % self._get_context_root()))
+        war_path = os.path.abspath("%s.war" % self._get_context_root())
+
         war_file = zipfile.ZipFile(war_path, 'w', compression=zipfile.ZIP_DEFLATED)
 
         def war_walker(arg, directory, files):
@@ -178,7 +163,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
         war_file.close()
         rmtree(temp_path)
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_skel(self):
@@ -187,7 +172,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
 
         copytree(self._get_skel_dir(), self._get_temp_dir())
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_media(self):
@@ -195,7 +180,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
         self.stdout.flush()
 
         if not self._is_media_included():
-            self.stdout.write(self.style.ERROR(u" SKIP"))
+            self.stdout.write(u" SKIP")
             self.stdout.flush()
             return
 
@@ -203,7 +188,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
         media_url = settings.MEDIA_URL
         copytree(media_path, os.path.join(self._get_temp_dir(), media_url.lstrip('\\/')))
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_static(self):
@@ -211,7 +196,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
         self.stdout.flush()
 
         if not self._is_static_included():
-            self.stdout.write(self.style.ERROR(u" SKIP"))
+            self.stdout.write(u" SKIP")
             self.stdout.flush()
             return
 
@@ -219,7 +204,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
         static_url = settings.STATIC_URL
         copytree(static_path, os.path.join(self._get_temp_dir(), static_url.lstrip('\\/')))
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_apps(self):
@@ -239,7 +224,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
             app_target = os.path.join(self._get_temp_dir(), 'WEB-INF', 'lib-python', app_pkg)
             copytree(app_path, app_target, False, ignore_in_sources)
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_additional_dirs(self):
@@ -253,7 +238,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
             dst_path = os.path.join(self._get_temp_dir(), os.path.basename(src_path))
             copytree(src_path, dst_path)
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_java_libs(self):
@@ -268,7 +253,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
             lib_target = os.path.join(self._get_temp_dir(), 'WEB-INF', 'lib', lib_name)
             copy(lib, lib_target)
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_copy_py_packages(self):
@@ -301,7 +286,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
                 pkg_target = os.path.join(self._get_temp_dir(), 'WEB-INF', 'lib-python', os.path.basename(module.__file__))
                 copy(pkg_path, pkg_target)
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
     def do_process_templates(self):
@@ -340,7 +325,7 @@ class Command(NoArgsCommand, DOJConfigurationMixin):
 
             os.remove(template_path)
 
-        self.stdout.write(self.style.MIGRATE_SUCCESS(u" OK"))
+        self.stdout.write(u" OK")
         self.stdout.flush()
 
 
